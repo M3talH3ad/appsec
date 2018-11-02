@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block content %}
+	{% for post in posts %}
+		<article class="media content-section">
+		  <div class="media-body">
+			<div class="article-metadata">
+				<div class="row">
+					
+					<div class="pull-left col-md-6">
+						<legend>Original Image</legend>
+						<img src={{ post.original }} class="img-thumbnail" style = "width:500px;" alt="Cinque Terre">
+					</div>
+					<div class="pull-right col-md-6">
+						<legend>Resized Image</legend>
+						<img src={{ post.squared }}  class="img-thumbnail pull-right" alt="Cinque Terre">	
+					</div>
+				</div>
+				
+			</div>
+			<h2><a class="article-title" href="{{ url_for('post', post_id=post.id) }}">{{ post.title }}</a></h2>
+			<p class="article-content">{{ post.content }}</p>
+		  </div>
+		</article>
+	{% endfor %}
+{% endblock content %}

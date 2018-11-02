@@ -15,10 +15,12 @@ class ImageResizing(object):
 
 	def image_resize(self, image_path, save_image_name, dimensions=[]):
 		if not isinstance(dimensions, list): return {'message': 'It should be an array', 'code': 1, 'success': True}
+		# if m.endswith('.png') or m.endswith('.jpg') 
 		try:
 			with open(image_path,'r+b') as f:
 				with Image.open(f) as image:
-					cover = resizeimage.resize_cover(image, dimensions)
+					print(dimensions)
+					cover = resizeimage.resize_contain(image, dimensions)
 					cover.save(save_image_name, image.format, validate=False)
 			self.return_message['message'] = 'Image with name '+save_image_name+' has been saved.'
 			return self.return_message['message']
