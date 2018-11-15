@@ -1,3 +1,8 @@
 *.png
 *.txt
+*.jpg
+*.jpeg
+*.gif
+*.log
+*.pyc
 SpellingChecker.py

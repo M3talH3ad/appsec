@@ -35,7 +35,7 @@ class LoginForm(FlaskForm):
     submit = SubmitField('Login')
 
 class ImageResize(FlaskForm):
-    picture = FileField('Upload image', validators=[DataRequired(), FileAllowed(['jpg', 'png'])])
+    picture = FileField('Upload image', validators=[DataRequired(), FileAllowed(['jpg', 'png', 'jpeg', 'gif'])])
     dimension = StringField('dimension', validators=[DataRequired()])
     submit = SubmitField('Resize')
 

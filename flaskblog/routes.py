@@ -6,7 +6,8 @@ from flaskblog import app, db, bcrypt
 from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm, PostForm, ImageResize, ResizeAgain
 from flaskblog.models import User, Post, Photos
 from flask_login import login_user, current_user, logout_user, login_required
-
+import time
+import logging
 
 @app.route("/", methods=['GET', 'POST'])
 @app.route("/home", methods=['GET', 'POST'])
@@ -14,6 +15,7 @@ def home():
     # posts = Post.query.all()
     # return render_template('home.html', posts=posts)
     if not current_user.is_authenticated:
+        logging.warning('Unauthorize access used to route home on time ' + str(time.time()))
         return redirect(url_for('login'))
     form = ImageResize()
     if form.validate_on_submit():
@@ -27,17 +29,24 @@ def home():
                                         author=current_user)
             db.session.add(photo)
             db.session.commit()
+            logging.info(str(current_user.username) + ' accessed the home page')
+            logging.info(str(current_user.username) + ' resized the image ' + picture_file['picture_fn'] + ' with dimension' + str(form.dimension.data))
             flash('Your post has been created!', 'success')
         return redirect(url_for('show_uploaded'))
     
     elif request.method == 'GET':
         form = ImageResize()
+        # logging.info(str(current_user.username) + ' resized the image ' + picture_file['picture_fn'] + ' with dimension' + str(form.dimension.data))
         return render_template('home.html', title='Home', form=form)
     return render_template('home.html', title='Home', form=form)
 
 
 @app.route("/uploaded", methods=['GET', 'POST'])
 def show_uploaded():
+    if not current_user.is_authenticated:
+        logging.warning('Unauthorize access used to route uploaded on time ' + str(time.time()))
+        return redirect(url_for('login'))
+    logging.info(str(current_user.username) + ' accessed the uploaded page')
     posts = Photos.query.all()
     return render_template('images.html', posts=posts)
 
@@ -75,6 +84,7 @@ def register():
         user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(user)
         db.session.commit()
+        logging.info('New user ' + str(form.username.data) + ' just signed on!')
         flash('Your account has been created! You are now able to log in', 'success')
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form)
@@ -89,16 +99,21 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user, remember=form.remember.data)
             next_page = request.args.get('next')
+            logging.info("Login successful for email id " + str(form.email.data))
             return redirect(next_page) if next_page else redirect(url_for('home'))
         else:
+            logging.info("Login Unsuccessful for email id " + str(form.email.data))
             flash('Login Unsuccessful. Please check email and password', 'danger')
     return render_template('login.html', title='Login', form=form)
 
 
 @app.route("/logout")
 def logout():
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
+    logging.info("Logout successful for email id " + str(current_user.username))
     logout_user()
-    return redirect(url_for('home'))
+    return redirect(url_for('login'))
 
 
 def save_original_picture(form_picture, filename):
@@ -136,11 +151,13 @@ def account():
         current_user.username = form.username.data
         current_user.email = form.email.data
         db.session.commit()
+        logging.info("Account updated for " + str(current_user.username))
         flash('Your account has been updated!', 'success')
         return redirect(url_for('account'))
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.email.data = current_user.email
+        logging.info("Account info requested for " + str(current_user.username))
     image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
     return render_template('account.html', title='Account',
                            image_file=image_file, form=form)
