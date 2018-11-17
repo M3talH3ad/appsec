@@ -16,26 +16,45 @@ def home():
     # posts = Post.query.all()
     # return render_template('home.html', posts=posts)
     if not current_user.is_authenticated:
-        logging.warning('Unauthorize access used to route home on time ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
+        logging.warning('Unauthorize access used to route home on time ' \
+            + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
         return redirect(url_for('login'))
+
+    logger_helper('info', str(current_user.username), ' accesed the home page ', \
+            strftime("%Y-%m-%d %H:%M:%S", gmtime()), request.remote_addr)
+
     form = ImageResize()
     if form.validate_on_submit():
         if not current_user.is_authenticated:
             return redirect(url_for('login'))
         if form.picture.data:
-            picture_file = save_picture(form.picture.data, float(form.dimension.data))
-            _temp = save_original_picture(form.picture.data, picture_file['picture_fn'])
-            photo = Photos(original=os.path.join('/static/profile_pics', 'original_'+picture_file['picture_fn']), 
-                                        squared=os.path.join('/static/profile_pics', picture_file['picture_fn']), 
-                                        author=current_user)
-            db.session.add(photo)
-            db.session.commit()
-            logger_helper('info', str(current_user.username), ' accesed the home page ', strftime("%Y-%m-%d %H:%M:%S", gmtime()), request.remote_addr)
-            logger_helper('info', str(current_user.username), ' resized the image ' \
+            try:
+                picture_file = save_picture(form.picture.data, float(form.dimension.data))
+                _temp = save_original_picture(form.picture.data, picture_file['picture_fn'])
+                logger_helper('info', str(current_user.username), ' resized the image ' \
                 + str(picture_file['picture_fn']) + ' with dimensions ' \
                 + str(form.dimension.data), strftime("%Y-%m-%d %H:%M:%S", gmtime()), request.remote_addr)
+            except Exception as e:
+                logging.error('User ' + str(current_user.username) + ' failed to save the original image at ' \
+                 + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
+            
+            try:
+                photo = Photos(original=os.path.join('/static/profile_pics', 'original_'+picture_file['picture_fn']), 
+                                            squared=os.path.join('/static/profile_pics', picture_file['picture_fn']), 
+                                            author=current_user)
+                db.session.add(photo)
+                db.session.commit()
+                logging.info('User ' + str(current_user.username) + \
+                    ' saved an image ti the DB and the access was successful' \
+                 + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
+            except Exception as e:
+                logging.error('User ' + str(current_user.username) + \
+                    ' failed to save the image to the DB ' \
+                 + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
+
             flash('Your post has been created!', 'success')
-        logger_helper('info', str(current_user.username), ' accesed the home page ', strftime("%Y-%m-%d %H:%M:%S", gmtime()), request.remote_addr)
+
+        
         return redirect(url_for('show_uploaded'))
     
     elif request.method == 'GET':
@@ -47,10 +66,13 @@ def home():
 @app.route("/uploaded", methods=['GET', 'POST'])
 def show_uploaded():
     if not current_user.is_authenticated:
-        logging.warning('Unauthorize access used to route uploaded at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
+        logging.warning('Unauthorize access used to route home on time ' \
+            + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
         return redirect(url_for('login'))
-    logging.info('User ' + str(current_user.username) + ' accessed the uploaded page at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
-    posts = Photos.query.all()
+    logging.info('User ' + str(current_user.username) + \
+        ' accessed the uploaded page at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + \
+        ' from ' + request.remote_addr)
+    posts = Photos.query.filter_by(user_id=current_user.id).all()
     return render_template('images.html', posts=posts)
 
 
@@ -68,7 +90,8 @@ def register():
         user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(user)
         db.session.commit()
-        logging.info('New user ' + str(form.username.data) + ' just signed on! ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
+        logging.info('New user ' + str(form.username.data) + \
+            ' just signed on! ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
         flash('Your account has been created! You are now able to log in', 'success')
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form)
@@ -87,8 +110,9 @@ def login():
                 ' at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
             return redirect(next_page) if next_page else redirect(url_for('home'))
         else:
-            logging.info("Login Unsuccessful for email id " + str(form.email.data) \
-                ' at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
+            logging.info("Login Unsuccessful for email id " + str(form.email.data) + \
+                ' at ' + str(strftime("%Y-%m-%d %H:%M:%S", gmtime())) + ' from ' \
+                + str(request.remote_addr))
             flash('Login Unsuccessful. Please check email and password', 'danger')
     return render_template('login.html', title='Login', form=form)
 
@@ -97,7 +121,7 @@ def login():
 def logout():
     if not current_user.is_authenticated:
         return redirect(url_for('login'))
-    logging.info("Logout successful for email id " + str(current_user.username) \
+    logging.info("Logout successful for email id " + str(current_user.username) + \
         ' at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
     logout_user()
     return redirect(url_for('login'))
@@ -136,14 +160,14 @@ def account():
         current_user.username = form.username.data
         current_user.email = form.email.data
         db.session.commit()
-        logging.info("Account updated for User " + str(current_user.username) \
+        logging.info("Account updated for User " + str(current_user.username) + \
             ' at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
         flash('Your account has been updated!', 'success')
         return redirect(url_for('account'))
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.email.data = current_user.email
-        logging.info("Account info requested for " + str(current_user.username) \
+        logging.info("Account info requested for " + str(current_user.username) + \
             ' at ' + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + ' from ' + request.remote_addr)
     image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
     return render_template('account.html', title='Account',
